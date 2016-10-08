@@ -32,8 +32,8 @@ def email(request) :
 		form = form_class(data=request.POST)
 		username = request.POST.get('user_id', '')
 		password = request.POST.get('user_pw', '')
-		mail_from = request.POST.get('mail_from', '')
-		mail_to = request.POST.get('mail_to', '')
+		mail_from = request.POST.get('mail_from', '') + '@cnu.ac.kr'
+		mail_to = request.POST.get('mail_to', '') + '@cs-cnu.org'
 		subject = request.POST.get('subject', '')
 		body = request.POST.get('body', '')
 
