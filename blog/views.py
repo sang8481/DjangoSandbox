@@ -1,15 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic.base import TemplateView
-from django.http import HttpResponseRedirect
 from django.utils import timezone
-from .forms import PostForm
+from .forms import PostForm, EmailForm
 from .models import Post
-from .models import EmailForm
-import getpass
-import telnetlib
 import socket
 import base64
-import sys
 
 def post_list(request) :
 	posts = Post.objects.filter(published_date__lte=timezone.now()).order_by('published_date')
@@ -32,47 +26,75 @@ def post_new(request):
         form = PostForm()
     return render(request, 'blog/post_edit.html', {'form': form})
 
-def sendmail(request):
-	if request.method == 'POST':
-		form = EmailForm(request.POST)
-	if form.is_valid():
-		user_id = form.cleaned_data['user_id']
-		password = form.cleaned_data['password']
-		email_to = form.cleaned_data['email_to']
-		subject = form.cleaned_data['subject']
-		message = form.cleaned_data['message']
-	else :
-		print("exit.")
-		exit()
+def email(request) :
+	form_class = EmailForm
+	if request.method == 'POST' :
+		form = form_class(data=request.POST)
+		username = request.POST.get('user_id', '')
+		password = request.POST.get('user_pw', '')
+		mail_from = request.POST.get('mail_from', '')
+		mail_to = request.POST.get('mail_to', '')
+		subject = request.POST.get('subject', '')
+		body = request.POST.get('body', '')
 
 
-	HOST = socket.gethostbyname('cuvic.cnu.ac.kr')
+		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		server_host_name = 'cuvic.cnu.ac.kr'
+		host_name = 'cnu.ac.kr'
 
-	try:
-		tn = telnetlib.Telnet(HOST, 25)
-	except IOError :
-		print("Telnet connection failed")
-		sys.exit()
+		sock.connect((server_host_name, 25))
+		print("socket connect")
+		message = sock.recv(1024)
+		print(message)
 
-	host_name = "cnu.ac.kr"
-	mail_from = user_id + "@" + host_name
+		sock.send(b"EHLO " + host_name.encode() + b"\r\n")
+		print("send EHLO")
+		message = sock.recv(1024)
+		print(message)
 
-	tn.write(b"EHLO " + mail_from.encode() + b"\r\n")
-	tn.write(b"AUTH LOGIN\r\n")
+		message = sock.recv(1024)
+		print(message)
 
-	tn.write(base64.b64encode(user_id.encode()) + b"\r\n")
-	tn.write(base64.b64encode(password.encode()) + b"\r\n")
+		sock.send(b"AUTH LOGIN\r\n")
+		print("send AUTH LOGIN")
+		message = sock.recv(1024)
+		print(message)
 
-	tn.write(b"MAIL FROM: " + mail_from.encode() + b"\r\n")
-	tn.write(b"RCPT TO:"+ email_to.encode() + b"\r\n")
-	tn.write(b"DATA\r\n")
+		sock.send(base64.b64encode(username.encode()) + b"\r\n")
+		print("send userid")
+		message = sock.recv(1024)
+		print(message)
+		sock.send(base64.b64encode(password.encode()) + b"\r\n")
+		print("send pw")
+		message = sock.recv(1024)
+		print(message)
 
-	tn.write(b"SUBJECT: " + subject.encode() + b"\r\n")
-	tn.write(b"FROM: " + mail_from.encode() + b"\r\n")
-	tn.write(b"TO: " + mail_to.encode() + b"\r\n")
+		sock.send(b"MAIL FROM: " + mail_from.encode() + b"\r\n")
+		message = sock.recv(1024)
+		print(message)
 
-	tn.write(message.encode() + b"\r\n")
-	tn.write(b".\r\n")
-	tn.write(b"QUIT\r\n")
+		sock.send(b"RCPT TO: "+ mail_to.encode() + b"\r\n")
+		message = sock.recv(1024)
+		print(message)
 
-	print (tn.read_all())
+		sock.send(b"DATA\r\n")
+		message = sock.recv(1024)
+		print(message)
+
+		sock.send(b"SUBJECT: " + subject.encode() + b"\r\n")
+		sock.send(b"FROM: " + mail_from.encode() + b"\r\n")
+		sock.send(b"TO: "+ mail_to.encode() + b"\r\n\n")
+		sock.send(body.encode() + b"\r\n")
+		sock.send(b".\r\n")
+		message = sock.recv(1024)
+		print(message)
+		sock.send(b"QUIT\r\n")
+		message = sock.recv(1024)
+		print(message)
+
+		#print (user_id + user_pw + mail_from + mail_to + subject + body)
+
+
+		return render(request, 'blog/email.html', {'form':form_class})
+
+	return render(request, 'blog/email.html', {'form':form_class})
