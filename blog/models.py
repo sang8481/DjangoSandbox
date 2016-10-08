@@ -1,4 +1,5 @@
 from django.db import models
+from django import forms
 from django.utils import timezone
 
 class Post(models.Model) :
@@ -14,3 +15,10 @@ class Post(models.Model) :
 
 	def __str__(self) :
 		return self.title
+
+class EmailForm(forms.Form) :
+	user_id = forms.CharField(max_length=255)
+	password = forms.CharField(max_length=32, widget = forms.PasswordInput)
+	email_to = forms.CharField(max_length=255)
+	subject = forms.CharField(max_length=255)
+	message = forms.CharField()
