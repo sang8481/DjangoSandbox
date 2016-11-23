@@ -74,6 +74,7 @@ def email(request) :
 		print(message)
 
 		sock.send(b"RCPT TO: "+ mail_to.encode() + b"\r\n")
+		print("mail_to : "+mail_to)
 		message = sock.recv(1024)
 		print(message)
 
